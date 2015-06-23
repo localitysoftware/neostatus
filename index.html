@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NeoStatus</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css" />
+  <style>
+    #map {
+      background: white;
+    }
+    .info {
+      width: 150px;
+      padding: 6px 8px;
+      font: 14px/16px Arial, Helvetica, sans-serif;
+      background: white;
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+    }
+    .info h4 {
+      margin: 0 0 5px;
+      color: #777;
+    }
+    .leaflet-label-pane {
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="map" style="width: 800px; height: 400px"></div>
+
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
+  <script src="states.js"></script>
+  <script src="tabletop.js"></script>
+  <script>
+    'use strict';
+
+    function addLabels() {
+      var labelPane = map._createPane('leaflet-label-pane', map.getPanes().mapPane);
+      var layer = L.tileLayer('http://{s}.tiles.mapbox.com/v3/fsrw.mh814210/{z}/{x}/{y}.png').addTo(map)
+      labelPane.appendChild(layer.getContainer())
+      layer.setZIndex(9)
+    }
+
+    function addStates(statusSheet) {
+      L.geoJson(states, {
+        style: function (feature) {
+          for (var i = 0; i < statusSheet.length; i++) {
+            var row = statusSheet[i]
+            if (row.State === feature.properties.STUSPS10) {
+              feature.properties.style = styles[row.Status]
+              feature.properties.comment = row.Comment
+              return styles[row.Status]
+            }
+          }
+          feature.properties.comment = 'No Status'
+          feature.properties.style = style
+          return style
+        },
+        onEachFeature: function(feature, layer) {
+          layer.on('mouseover', function(e) {
+            info.update(e.target.feature.properties)
+            e.target.setStyle(hoverStyle)
+          })
+          layer.on('mouseout', function(e) {
+            info.update()
+            e.target.setStyle(feature.properties.style)
+          })
+        }
+      }).addTo(map)
+    }
+
+    function init() {
+      Tabletop.init({
+        key: '1klobDMEUf0sSYQW1u_XYgxqraw3u504Z_7r8FO-nxs8',
+        callback: function(data, tabletop) {
+          addStates(data)
+          addLabels()
+        },
+        simpleSheet: true
+      })
+    }
+
+    var styles = {
+      one: {
+        stroke: false,
+        fillColor: '#588c2e',
+        fillOpacity: 0.8
+      },
+
+      two: {
+        stroke: false,
+        fillColor: '#a4d87f',
+        fillOpacity: 0.8
+      },
+
+      three: {
+        stroke: false,
+        fillColor: '#d9e9cb',
+        fillOpacity: 0.8
+      }
+    }
+
+    var style = {
+      stroke: false,
+      fillColor: '#fff',
+      fillOpacity: 0
+    }
+
+    var hoverStyle = {
+      stroke: true,
+      color: '#333',
+      weight: 3
+    }
+
+    var map = L.map('map', {
+      zoomControl: false,
+      attributionControl: false,
+      minZoom: 4,
+      maxZoom: 6
+    }).setView([38, -100], 4)
+
+    var info = L.control()
+
+    info.onAdd = function (map) {
+      this._div = L.DomUtil.create('div', 'info')
+      this.update()
+      return this._div
+    };
+
+    info.update = function (props) {
+      this._div.innerHTML = '<h4>Neo Status</h4>' +  (props ?
+        props.STUSPS10 + '<br/>' + '<b>' + props.comment + '</b>'
+        : 'Hover over a state')
+    };
+
+    info.addTo(map)
+
+    window.onload = init
+
+  </script>
+</body>
+</html>
